@@ -1,0 +1,553 @@
+App.js
+import './App.css';
+import { Fragment, useEffect, useState } from "react";
+import socketClient from "socket.io-client";
+import { HorizontalBarGraph } from './Components/HorizontalBarGraph';
+import { LineChartComponent } from './Components/LineChart';
+import { BarChartComponent } from './Components/BarChart';
+import { Clock } from './Components/Clock';
+import computer1 from "./assets/computer1.jpg";
+import wallpaper from "./assets/wallpaper.jpg"
+import { SubCard } from './Components/SubCard';
+import { DonutChartComponent } from './Components/DonutChart';
+
+const SERVER = "http://127.0.0.1:8080";
+
+function App() {
+  const [data, setData] = useState("");
+  const [cpufree, setCpuFree] = useState("");
+  const [osData, setOsData] = useState("");
+  const [memData, setMemData] = useState("");
+
+
+  useEffect(() => {
+    var socket = socketClient(SERVER, { transports: ['websocket'] });
+    socket.on('cpu', (cpuPercent) => {
+      setData(currentData => [...currentData, cpuPercent])
+    });
+
+    socket.on('freeCpu', (cpuFreePer) => {
+      setCpuFree(currentData => [...currentData, cpuFreePer])
+    });
+
+    socket.on("os-details", (os) => {
+      setOsData(os);
+    })
+
+    socket.on("mem-details", (mem) => {
+      console.log(memData)
+      setMemData(mem)
+    })
+  }, [])
+
+  useEffect(() => {
+    //make tooltip appear based on cursor
+    if (document.getElementsByClassName('tooltiptext')) {
+      var tooltiptext = document.getElementsByClassName('tooltiptext');
+      for (let i = 0; i < tooltiptext.length; i++) {
+        document.addEventListener('mousemove', fn, false);
+        function fn(e) {
+          tooltiptext[i].style.left = e.pageX + 'px';
+        }
+      }
+    }
+
+  }, [])
+  return (
+    <div className="App" style={{ background: `url{${wallpaper}}` }}>
+      <div className='nav-bar flex-container'>
+        {/* <div>Dashboard</div> */}
+        <div className='flex-child-main'>
+        <div className='dropdown'>
+          <img className='logo' src={computer1} alt="logo" />
+          <div className='menu'>
+            <div className='py-2 px-4' style={{ borderBottom: "1px solid gray", fontWeight: "bold" }}>OS DETAILS</div>
+            <div className='px-4 py-2'>{osData?.osip}</div>
+            <div className='py-1 px-4'>{osData?.platform}</div>
+            <div className='py-1 px-4'>{osData?.cpu} CPUs</div>
+            <div className='py-1 px-4'>{osData?.osarch}</div>
+            <div className='py-1 px-4'>{osData?.hostname}</div>
+            <div className='pt-1 pb-3 px-4'>{osData?.ostype}</div>
+          </div>
+        </div>
+        </div>
+        <div className='flex-child-main'>
+        <div className='text-white p-3'><h2>DASHBOARD</h2></div>
+        </div>
+        
+      </div>
+      <br></br><br></br><br></br><br></br>
+      <div className="flex-container">
+        <div className=" flex-child1">
+          <div className='main-card'>
+            <h4 className='title'>CPU  total idle</h4>
+            <div className='text-center pb-3 pt-3 value'>{osData.cpuavg?.totalIdle}</div>
+          </div>
+        </div>
+        <div className=" flex-child1">
+          <div className='main-card'>
+            <h4 className='title'>CPU avg idle</h4>
+            <div className='text-center pb-3 pt-3 value'>{osData.cpuavg?.avgIdle}</div>
+          </div>
+        </div>
+        <div className="flex-child1" >
+          <div className='main-card'>
+            <h4 className='title'>cpu total tick</h4>
+            <div className='text-center pb-3 pt-3 value'>{osData.cpuavg?.totalTick}</div>
+          </div>
+        </div>
+        <div className="flex-child1" >
+          <div className='main-card'>
+            <h4 className='title'>APU avg tick</h4>
+            <div className='text-center pb-3 pt-3 value'>{osData.cpuavg?.avgTotal}</div>
+          </div>
+        </div>
+      </div>
+      <div className="flex-container">
+        <div className="flex-child-main" >
+          {
+            data ?
+              <Fragment>
+
+                <div className='main-card'>
+                  <h4 className='title'>CPU Usage</h4>
+                  <LineChartComponent value={data} />
+                </div>
+              </Fragment> : ""
+          }
+        </div>
+        <div className=" flex-child1">
+          <div className='main-card' style={{ height: "480px" }}>
+            <h4 className='title'>System Up Time</h4>
+            <div className='text-center pb-3 pt-3 display-4 text-white'>{osData?.sysuptime}</div>
+            <Clock background="white" border="gray" />
+          </div>
+        </div>
+
+      </div>
+      <div className="flex-container">
+        <div className='flex-child1'>
+          <div className='main-card' style={{ height: "480px" }}>
+            <h4 className='title'>Process Up Time</h4>
+            <div className='text-center pb-3 pt-3 display-4 value'>{osData?.processuptime ? osData?.processuptime.toFixed(3) : ""}</div>
+            <Clock background="white" border="gray" />
+          </div>
+        </div>
+        <div className="flex-child-main" >
+          {
+            cpufree ?
+              <Fragment>
+                <div className='main-card'>
+                  <h4 className='title'>Free CPU</h4>
+                  <BarChartComponent value={cpufree} />
+                </div>
+              </Fragment> : ""
+          }
+        </div>
+      </div>
+      <div className='flex-container'>
+        <div className=" flex-child-main">
+          <Fragment>
+            <div className='main-card text-center display-4'>
+              <h4 className='title'>Free Memory(MB)</h4>
+              <div className='display-5 p-5 text-white'>{memData?.freeMemMb}</div>
+            </div>
+
+            <div className='main-card text-center display-4'>
+              <h4 className='title'>Free Memory(%)</h4>
+              <div className='display-5 p-5 text-white'>{memData?.freeMemPercentage}</div>
+              <HorizontalBarGraph width={memData !== null ? memData?.freeMemPercentage : "100%"} text="Free memory"
+                value={memData?.freeMemMb} total={memData?.totalMemMb} />
+            </div>
+          </Fragment>
+        </div>
+        <div className='flex-child-main'>
+          <Fragment>
+            <div className='main-card text-center display-4'>
+              <h4 className='title'>Used Memory(MB)</h4>
+              <div className='display-5 p-5 text-white'>{memData?.usedMemMb}</div>
+            </div>
+
+            <div className='main-card text-center display-4'>
+              <h4 className='title'>Used Memory(%)</h4>
+              <div className='display-5 p-5 text-white'>{memData?.usedMemPercentage}</div>
+              <HorizontalBarGraph width={memData !== null ? memData?.usedMemPercentage : "100%"} text="Used memory"
+                value={memData?.usedMemMb} total={memData?.totalMemMb} />
+            </div>
+          </Fragment>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+====================================================
+App.css
+
+.nav-bar{
+  display: block;
+  width: 100%;
+  background-color: rgb(41, 41, 43);
+  height: 70px;
+  position: fixed;
+  z-index: 1000;
+}
+.logo{
+  height: 50px;
+  width: 50px;
+  border-radius: 100%;
+  float: right;
+  margin: 10px;
+  float: right;
+}
+.logo:hover{
+  cursor: pointer;
+}
+.dropdown{
+  position: relative;
+  display: inline-block;
+}
+.menu{
+  display: none;
+  position: absolute;
+  background-color: rgb(5, 2, 33);
+  color: white;
+  min-width: 200px;
+  box-shadow: 0px 8px 16px 0px rgba(107, 105, 134, 0.2);
+  z-index: 1;
+  margin-top: 50px;
+  margin-left: 5px;
+  text-align: center;
+  border-radius: 10px;
+}
+.dropdown:hover .menu{
+  display: block;
+}
+/*TOOLTIP*/
+.tooltip {
+  position: relative;
+  display: block;
+  background-color: rgb(104, 119, 226);
+  height: 50px;
+  width: 50%;
+}
+.year{
+  display: block;
+  height: 50px;
+  background-color: rgb(61, 10, 155);
+}
+.graph .tooltiptext {
+  margin-top: -20px;
+  visibility: hidden;
+  width: 220px;
+  background-color: rgb(244, 235, 216);
+  color: black;
+  text-align: center;
+  padding: 10px;
+  border: 2px solid rgb(245, 232, 204);
+  font-size: 20px !important;
+
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 1;
+}
+
+.graph:hover .tooltiptext {
+  visibility: visible;
+}
+.text-green{
+  color: green;
+}
+.text-lt-blue{
+color: rgb(104, 119, 226);
+}
+.text-dk-blue{
+color: rgb(61, 10, 155);
+}
+/**/
+
+/*Boxes*/
+.flex-container {
+  display: flex;
+  margin-bottom: 20px;
+}
+.flex-child-main{
+  flex: 0 100%;
+}
+.flex-child1{
+  flex: 0 50%;
+}
+
+.main-content{
+  background-color:rgb(114, 113, 113) ;
+}
+
+.main-card{
+  margin: 30px;
+  border-radius: 10px;
+  padding: 10px;
+  background-color: rgb(6, 3, 53);
+}
+.main-card:hover{
+  transform: scale(1.07);
+}
+.title{
+  background-color: gray;
+  text-align: center;
+  padding: 10px;
+  text-transform: uppercase;
+  color: white;
+  border-radius: 10px;
+
+  animation: glow 1s ease-in-out infinite alternate;
+
+}
+@keyframes glow {
+  from {
+    text-shadow: 0 0 10px #fff, 0 0 20px rgb(97, 201, 215), 0 0 30px #1b99aa, 0 0 40px #5854c7, 0 0 50px #3a27a7, 0 0 60px #3f168a, 0 0 70px #210549;
+  }
+  
+  to {
+    text-shadow: 0 0 20px #fff, 0 0 30px #ff4da6, 0 0 40px #ff4da6, 0 0 50px #ff4da6, 0 0 60px #ff4da6, 0 0 70px #ff4da6, 0 0 80px #ff4da6;
+  }
+}
+.value{
+  font-size: 25px;
+  color: gray;
+}
+@media (min-width:768px) {
+  .flex-container {
+    flex-direction: row;
+  }
+}
+@media (max-width:767px) {
+  .flex-container {
+    flex-direction: column;
+  }
+
+}
+
+/*clock*/
+.clock {
+  position: relative;
+  height: 190px;
+  width: 190px;
+  border-radius: 100%;
+  border: 10px solid;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  
+  }
+  .top {
+    position: absolute;
+    width: 3px;
+    height: 8px;
+    background: #262626;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+  }
+  .right {
+    position: absolute;
+    width: 8px;
+    height: 3px;
+    background: #262626;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto 0;
+  }
+  .bottom {
+    position: absolute;
+    width: 3px;
+    height: 8px;
+    background: #262626;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0 auto;
+  }
+  .left {
+    position: absolute;
+    width: 8px;
+    height: 3px;
+    background: #262626;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto 0;
+  }
+  .center {
+    height: 6px;
+    width: 6px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    background: #262626;
+    border-radius: 100%;
+  }
+  /* .shadow {
+    height: 200px;
+    width: 200px;
+    position: absolute;
+    left: 60px;
+    top: 60px;
+    transform: rotate(135deg);
+    background: linear-gradient(transparent, rgba(#000, 0.1));
+  } */
+  .hour {
+    width: 3px;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    /* //animation: time 86400s infinite linear; */
+    animation: time 60s infinite linear;
+  }
+  .hour:before {
+    position: absolute;
+    content: "";
+    background: #262626;
+    height: 60px;
+    width: 3px;
+    top: 30px;
+  }
+  .minute {
+    width: 1px;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    /* //animation: time 3600s infinite linear; */
+    animation: time 30s infinite linear;
+  }
+  .minute:before {
+    position: absolute;
+    content: "";
+    background: #262626;
+    height: 40px;
+    width: 1px;
+    top: 50px;
+  }
+  .second {
+    width: 2px;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    /* //animation: time 60s infinite linear; */
+    animation: time 15s infinite linear;
+  }
+  .second:before {
+    position: absolute;
+    content: "";
+    background: #fd1111;
+    height: 45px;
+    width: 2px;
+    top: 45px;
+  }
+
+@keyframes time {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+============================================================================
+
+Index.css
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  background-color: rgb(79, 78, 78);
+  overflow-x: hidden;
+  height: auto;
+}
+/* .bg-wrapper{
+  background-image: url("/src/assets/wallpaper.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  height: 100%;
+} */
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+====================================================================
+PUBLIC
+index.html
+
+ <!--BOOTSTRAP-->
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+
+=================================================================
+
+Package.json
+
+{
+  "name": "client",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/react": "^13.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "apexcharts": "^3.35.4",
+    "chart.js": "^3.9.0",
+    "mdbreact": "^5.2.0",
+    "node-os-utils": "^1.3.7",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.4.0",
+    "react-chartjs-2": "^4.3.1",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^2.1.13",
+    "socket.io-client": "^4.5.1",
+    "web-vitals": "^2.1.4",
+    "yahoo-stock-prices": "^1.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
